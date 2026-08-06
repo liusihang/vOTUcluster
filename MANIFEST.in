@@ -1,5 +1,9 @@
 include README.md
 include LICENSE
+include setup_ViOTUcluster.sh
+include setup_ViOTUcluster_yaml.sh
+recursive-include environments *.yml
+recursive-include test *.fastq.gz
 recursive-include Modules *
 recursive-include setup_scripts *
 recursive-include ViOTUcluster *

@@ -76,6 +76,11 @@ def resolve_viralverify_command():
         return shlex.split(explicit)
 
     python_path = Path(sys.executable).resolve()
+    main_prefix = python_path.parent.parent
+    nested = main_prefix / "envs" / "viralverify" / "bin" / "viralverify"
+    if nested.is_file():
+        return [str(nested)]
+
     envs_dir = python_path.parents[2]
     sidecar = envs_dir / "viralverify" / "bin" / "viralverify"
     if sidecar.is_file():

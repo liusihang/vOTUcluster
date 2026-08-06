@@ -26,6 +26,14 @@ class TestShellContracts(unittest.TestCase):
         content = read_text("Modules", "ViOTUcluster_Check")
         self.assertIn("../../viralverify/bin/viralverify", content)
 
+    def test_dependency_check_has_nested_yaml_viralverify_fallback(self):
+        content = read_text("Modules", "ViOTUcluster_Check")
+        self.assertIn("../envs/viralverify/bin/viralverify", content)
+
+    def test_dependency_check_fails_when_required_commands_are_missing(self):
+        content = read_text("Modules", "ViOTUcluster_Check")
+        self.assertRegex(content, r"for missing_dep[\s\S]+done\s+exit 1\s+fi")
+
 
 if __name__ == "__main__":
     unittest.main()

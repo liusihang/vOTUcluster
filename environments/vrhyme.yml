@@ -1,0 +1,17 @@
+name: vRhyme
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3.8
+  - samtools
+  - mash
+  - mummer
+  - mmseqs2
+  - prodigal
+  - bowtie2
+  - bwa
+  - scikit-learn=0.23.0
+  - vrhyme=1.1.0
+  - numpy=1.19.0

@@ -13,7 +13,23 @@ NUM_THREADS=$2
 
 # Function to check if VirSorter database is installed
 check_virsorter_db() {
-    if [ -d "$DB_DIR/db/group" ] && [ -d "$DB_DIR/db/hmm" ] && [ -d "$DB_DIR/db/rbs" ]; then
+    local virsorter_dir="$DB_DIR/db"
+    local combined_hmm="$virsorter_dir/hmm/viral/combined.hmm"
+    local ncldv_rbs="$virsorter_dir/group/NCLDV/rbs-prodigal-train.db"
+    local pressed_ok=false
+
+    if [ -f "$virsorter_dir/hmm/viral/combined.h3f" ] && \
+       [ -f "$virsorter_dir/hmm/viral/combined.h3i" ] && \
+       [ -f "$virsorter_dir/hmm/viral/combined.h3m" ] && \
+       [ -f "$virsorter_dir/hmm/viral/combined.h3p" ]; then
+        pressed_ok=true
+    fi
+
+    if [ -d "$virsorter_dir/group" ] && \
+       [ -d "$virsorter_dir/hmm" ] && \
+       [ -d "$virsorter_dir/rbs" ] && \
+       [ -f "$ncldv_rbs" ] && \
+       { [ -f "$combined_hmm" ] || [ "$pressed_ok" = true ]; }; then
         echo "[✅] VirSorter2 database already installed."
         return 0
     else
@@ -105,7 +121,18 @@ fi
 # Convert ViralVerify and other HMM files to binary format
 echo "Converting to binary format..."
 hmmconvert -b "$DB_DIR/ViralVerify/nbc_hmms.hmm" > "$DB_DIR/ViralVerify/nbc_hmms.h3m"
-hmmconvert -b "$DB_DIR/db/hmm/viral/combined.hmm" > "$DB_DIR/db/hmm/viral/combined.h3m"
+
+if [ -f "$DB_DIR/db/hmm/viral/combined.hmm" ]; then
+    hmmpress -f "$DB_DIR/db/hmm/viral/combined.hmm"
+    for suffix in h3f h3i h3m h3p; do
+        generated="$DB_DIR/db/hmm/viral/combined.hmm.$suffix"
+        target="$DB_DIR/db/hmm/viral/combined.$suffix"
+        if [ -f "$generated" ]; then
+            mv -f "$generated" "$target"
+        fi
+    done
+    hmmconvert -b "$DB_DIR/db/hmm/viral/combined.hmm" > "$DB_DIR/db/hmm/viral/combined.h3m"
+fi
 
 # Convert all Pfam HMM files to binary format
 for hmm_file in "$DB_DIR/db/hmm/pfam/"*.hmm; do

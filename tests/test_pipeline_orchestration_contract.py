@@ -55,6 +55,13 @@ class PipelineFixture:
         for subdir in ("db", "ViralVerify", "checkv-db-v1.5", "genomad_db"):
             (self.db_dir / subdir).mkdir(exist_ok=True)
 
+    def populate_virsorter_runtime_assets(self):
+        virsorter_root = self.db_dir / "db"
+        (virsorter_root / "hmm" / "viral").mkdir(parents=True, exist_ok=True)
+        (virsorter_root / "group" / "NCLDV").mkdir(parents=True, exist_ok=True)
+        (virsorter_root / "hmm" / "viral" / "combined.hmm").write_text("HMMER3/f\n")
+        (virsorter_root / "group" / "NCLDV" / "rbs-prodigal-train.db").write_text("stub\n")
+
 
 class TestPipelineOrchestrationContract(unittest.TestCase):
     def setUp(self):
@@ -68,6 +75,23 @@ class TestPipelineOrchestrationContract(unittest.TestCase):
         self.assertFalse(
             pipeline.validate_inputs(),
             "validate_inputs should fail fast when required database subdirectories are missing",
+        )
+
+    def test_validate_inputs_requires_virsorter_runtime_assets(self):
+        self.fx.populate_database_structure()
+        pipeline = self.fx.make_pipeline()
+        self.assertFalse(
+            pipeline.validate_inputs(),
+            "validate_inputs should fail when VirSorter2 database assets are incomplete",
+        )
+
+    def test_validate_inputs_accepts_complete_virsorter_runtime_assets(self):
+        self.fx.populate_database_structure()
+        self.fx.populate_virsorter_runtime_assets()
+        pipeline = self.fx.make_pipeline()
+        self.assertTrue(
+            pipeline.validate_inputs(),
+            "validate_inputs should pass once required VirSorter2 assets are present",
         )
 
     def test_setup_environment_exports_stage_thread_budget(self):

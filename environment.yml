@@ -1,0 +1,28 @@
+name: ViOTUcluster
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - biopython>=1.79
+  - pandas>=1.3
+  - numpy
+  - packaging
+  - fastp
+  - megahit
+  - spades
+  - viralverify
+  - virsorter=2.2.4
+  - genomad=1.8.0
+  - checkv=1.0.3
+  - drep=3.5.0
+  - vrhyme
+  - bwa
+  - sambamba
+  - coverm
+  - blast
+  - parallel
+  - pip:
+      - .

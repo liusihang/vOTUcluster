@@ -1,14 +1,40 @@
 #!/usr/bin/env bash
 
+resolve_sidecar_command() {
+    local tool_name="$1"
+    local script_dir
+    local sidecar_candidate
+
+    case "$tool_name" in
+        viralverify)
+            script_dir="$(cd "$(dirname "$0")" && pwd)"
+            sidecar_candidate="${script_dir}/../../viralverify/bin/viralverify"
+            ;;
+        vRhyme)
+            if [ -z "${CONDA_PREFIX:-}" ]; then
+                return 1
+            fi
+            sidecar_candidate="${CONDA_PREFIX}/envs/vRhyme/bin/vRhyme"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    if [ -x "$sidecar_candidate" ]; then
+        echo "$sidecar_candidate"
+        return 0
+    fi
+
+    return 1
+}
+
 # Function to check if a command is installed and retrieve its version
 check_command() {
-    if [ "$1" = "viralverify" ] && ! command -v "$1" >/dev/null 2>&1; then
-        local script_dir
+    if ! command -v "$1" >/dev/null 2>&1; then
         local sidecar_candidate
-        script_dir="$(cd "$(dirname "$0")" && pwd)"
-        sidecar_candidate="${script_dir}/../../viralverify/bin/viralverify"
-        if [ -x "$sidecar_candidate" ]; then
-            echo -e "[✅] viralverify is available via sidecar env: $sidecar_candidate"
+        if sidecar_candidate="$(resolve_sidecar_command "$1")"; then
+            echo -e "[✅] $1 is available via sidecar env: $sidecar_candidate"
             return 0
         fi
     fi
@@ -74,17 +100,13 @@ dependencies=(
     "conda"
     "fastp"
     "megahit"
-    "spades.py"
+    "metaspades.py"
     "virsorter"
     "viralverify"
     "genomad"
-    #"pyhmmer"
     "checkv"
-    #"vrhyme"
     "dRep"
-    #"DRAM"
-    #"iPhop"
-    "checkm"
+    "vRhyme"
     "bwa"
     "sambamba"
     "coverm"
@@ -97,12 +119,9 @@ dependencies=(
 declare -A expected_versions
 expected_versions=(
     [genomad]="1.8.0"
-    [checkm-genome]="1.2.2"
     [dRep]="3.5.0"
     [checkv]="1.0.3"
-    [virsorter]="2.2.4.2"
-    [scikit-learn]="0.22.1"
-    [numpy]="1.23.5"
+    [virsorter]="2.2.4"
 )
 
 # Initialize a variable to track missing dependencies

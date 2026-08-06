@@ -11,6 +11,16 @@ import sys
 from typing import Optional, List
 
 
+def _virsorter_hmm_assets_ready(virsorter_dir: str) -> bool:
+    """VirSorter2 needs either the source combined.hmm or a full pressed database."""
+    combined_hmm = os.path.join(virsorter_dir, "hmm", "viral", "combined.hmm")
+    pressed_paths = [
+        os.path.join(virsorter_dir, "hmm", "viral", f"combined.{suffix}")
+        for suffix in ("h3f", "h3i", "h3m", "h3p")
+    ]
+    return os.path.isfile(combined_hmm) or all(os.path.isfile(path) for path in pressed_paths)
+
+
 def validate_file_exists(path: str, description: str = "File") -> bool:
     """
     Validate that a file exists and is readable.
@@ -140,6 +150,27 @@ def validate_database_structure(db_path: str) -> bool:
         raise FileNotFoundError(
             f"Database directory {db_path} is missing required subdirectories: "
             f"{', '.join(missing)}"
+        )
+
+    virsorter_dir = os.path.join(db_path, DB_VIRSORTER)
+    virsorter_missing = []
+
+    if not _virsorter_hmm_assets_ready(virsorter_dir):
+        virsorter_missing.append(
+            "VirSorter2 viral HMM database "
+            f"({DB_VIRSORTER}/hmm/viral/combined.hmm or combined.h3f/h3i/h3m/h3p)"
+        )
+
+    ncldv_rbs = os.path.join(virsorter_dir, "group", "NCLDV", "rbs-prodigal-train.db")
+    if not os.path.isfile(ncldv_rbs):
+        virsorter_missing.append(
+            f"VirSorter2 NCLDV prodigal training DB ({DB_VIRSORTER}/group/NCLDV/rbs-prodigal-train.db)"
+        )
+
+    if virsorter_missing:
+        raise FileNotFoundError(
+            f"Database directory {db_path} is missing required VirSorter2 assets: "
+            f"{', '.join(virsorter_missing)}"
         )
     
     return True

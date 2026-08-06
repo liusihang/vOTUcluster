@@ -1,0 +1,8 @@
+name: iPhop
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.8
+  - iphop

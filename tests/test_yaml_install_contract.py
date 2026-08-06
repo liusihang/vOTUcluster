@@ -113,6 +113,44 @@ class TestYamlEnvironmentContracts(unittest.TestCase):
             load_environment("dram.yml")["dependencies"],
         )
 
+    def test_cpu_environment_specs_add_only_verified_tensorflow_builds(self):
+        expected = (
+            (
+                "viotucluster.yml",
+                "viotucluster-cpu.yml",
+                "tensorflow=2.11.1=cpu_py38h66f0ec1_0",
+            ),
+            (
+                "iphop.yml",
+                "iphop-cpu.yml",
+                "tensorflow=2.7.0=cpu_py38h66f0ec1_0",
+            ),
+        )
+
+        for default_filename, cpu_filename, tensorflow_pin in expected:
+            with self.subTest(cpu_filename=cpu_filename):
+                cpu_path = ENVIRONMENT_DIR / cpu_filename
+                self.assertTrue(cpu_path.is_file(), f"missing CPU environment file: {cpu_path}")
+                default_specification = load_environment(default_filename)
+                cpu_specification = load_environment(cpu_filename)
+                self.assertEqual(default_specification["channels"], cpu_specification["channels"])
+                cpu_dependencies = list(cpu_specification["dependencies"])
+                self.assertIn(tensorflow_pin, cpu_dependencies)
+                cpu_dependencies.remove(tensorflow_pin)
+                self.assertEqual(default_specification["dependencies"], cpu_dependencies)
+
+    def test_readme_documents_cpu_option(self):
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn("--cpu", readme)
+        self.assertIn("CPU-only", readme)
+        self.assertIn("CONDA_OVERRIDE_CUDA", readme)
+        self.assertIn("mamba", readme)
+        self.assertIn("TensorFlow 2.11.1", readme)
+        self.assertIn("TensorFlow 2.7.0", readme)
+        self.assertIn("9.19 GiB", readme)
+        self.assertIn("15.72 GiB", readme)
+
 
 class TestYamlInstallerContract(unittest.TestCase):
     def test_dependency_check_receives_the_conda_runtime_path(self):
@@ -124,7 +162,13 @@ class TestYamlInstallerContract(unittest.TestCase):
             installer,
         )
 
-    def run_installer(self, *arguments, prefix_exists=False, with_checkm_data=False):
+    def run_installer(
+        self,
+        *arguments,
+        prefix_exists=False,
+        with_checkm_data=False,
+        manager_name="fake-manager",
+    ):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             install_prefix = temp_path / "ViOTUcluster"
@@ -132,10 +176,12 @@ class TestYamlInstallerContract(unittest.TestCase):
                 install_prefix.mkdir()
 
             command_log = temp_path / "manager.log"
-            fake_manager = temp_path / "fake-manager"
+            fake_manager = temp_path / manager_name
             fake_manager.write_text(
                 "#!/usr/bin/env bash\n"
-                "printf 'CHECKM_DATA_DIR=%s args=%s\\n' \"${CHECKM_DATA_DIR:-}\" \"$*\" >> \"$VIOTUCLUSTER_MANAGER_LOG\"\n",
+                "printf 'CUDA_SET=%s CUDA_VALUE=%s CHECKM_DATA_DIR=%s args=%s\\n' "
+                "\"${CONDA_OVERRIDE_CUDA+x}\" \"${CONDA_OVERRIDE_CUDA-<unset>}\" "
+                "\"${CHECKM_DATA_DIR:-}\" \"$*\" >> \"$VIOTUCLUSTER_MANAGER_LOG\"\n",
                 encoding="utf-8",
             )
             fake_manager.chmod(0o755)
@@ -178,6 +224,11 @@ class TestYamlInstallerContract(unittest.TestCase):
         for target_prefix in expected_prefixes:
             self.assertTrue(any(f"--prefix {target_prefix}" in command for command in logged_commands))
         self.assertTrue(all("--dry-run" in command for command in logged_commands))
+        self.assertIn("environments/viotucluster.yml", logged_commands[0])
+        self.assertIn("environments/iphop.yml", logged_commands[-1])
+        self.assertTrue(
+            all("CUDA_SET= CUDA_VALUE=<unset>" in command for command in logged_commands)
+        )
 
     def test_existing_prefix_is_rejected_before_manager_runs(self):
         completed, logged_commands, _, _ = self.run_installer(prefix_exists=True)
@@ -197,6 +248,30 @@ class TestYamlInstallerContract(unittest.TestCase):
         self.assertTrue(
             all(f"CHECKM_DATA_DIR={checkm_data_dir}" in command for command in logged_commands)
         )
+
+    def test_cpu_dry_run_selects_cpu_specs_and_hides_cuda(self):
+        completed, logged_commands, _, _ = self.run_installer(
+            "--dry-run",
+            "--cpu",
+            manager_name="mamba",
+        )
+
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertEqual(5, len(logged_commands))
+        self.assertIn("environments/viotucluster-cpu.yml", logged_commands[0])
+        self.assertIn("environments/iphop-cpu.yml", logged_commands[-1])
+        self.assertTrue(all("CUDA_SET=x CUDA_VALUE=" in command for command in logged_commands))
+
+    def test_cpu_mode_rejects_non_mamba_manager(self):
+        completed, logged_commands, _, _ = self.run_installer(
+            "--dry-run",
+            "--cpu",
+            manager_name="conda",
+        )
+
+        self.assertNotEqual(0, completed.returncode)
+        self.assertIn("--cpu requires mamba", completed.stderr)
+        self.assertEqual([], logged_commands)
 
 
 if __name__ == "__main__":

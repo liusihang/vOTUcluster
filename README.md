@@ -76,6 +76,20 @@ bash setup_ViOTUcluster_yaml.sh --dry-run
 bash setup_ViOTUcluster_yaml.sh
 ```
 
+CPU-only installation is an explicit user option; it is not the default. Use it when GPU acceleration is not needed and you want to avoid installing CUDA runtime libraries:
+
+```bash
+# Optional: verify the CPU-only dependency solution first.
+bash setup_ViOTUcluster_yaml.sh --cpu --dry-run
+
+# Create the CPU-only environments.
+bash setup_ViOTUcluster_yaml.sh --cpu
+```
+
+The `--cpu` option requires **mamba**. The installer selects CPU-specific main and iPhop YAML files and sets `CONDA_OVERRIDE_CUDA=""` internally, so users do not need to export that variable themselves. The verified specifications pin TensorFlow 2.11.1 for geNomad and TensorFlow 2.7.0 for iPhop to exact Linux/Python 3.8 CPU builds. iPhop 1.3.3 packages TensorFlow 2.7.0 files, so matching that version avoids mixing files from different TensorFlow releases. The normal command without `--cpu` continues to use the default YAML files.
+
+**Disk space:** software environments and biological databases are separate. On the Linux validation host, a clean CPU-only software prefix measured **9.19 GiB**, compared with **15.72 GiB** for the previously validated default prefix (about 6.54 GiB, or 42%, smaller). CPU-only mode avoids the duplicated CUDA, cuDNN, and NCCL runtime packages; database downloads still require their own storage as described below. Exact size varies with platform and resolved package builds.
+
 To install into a custom clean prefix:
 
 ```bash
@@ -95,6 +109,7 @@ The directory must contain `genome_tree/genome_tree.derep.txt`. Without this opt
 The YAML installer:
 
 - uses `conda-forge` and `bioconda` with strict channel priority without rewriting the user's global Conda configuration;
+- supports optional `--cpu` installation through verified CPU-specific TensorFlow YAML files and mamba;
 - creates `envs/vRhyme`, `envs/viralverify`, `envs/DRAM`, and `envs/iPhop` under the main prefix;
 - pins the ViOTUcluster VirSorter fork to a specific Git commit;
 - installs the current repository checkout with `pip --no-deps` after Conda resolves runtime dependencies;

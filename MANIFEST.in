@@ -7,3 +7,4 @@ recursive-include test *.fastq.gz
 recursive-include Modules *
 recursive-include setup_scripts *
 recursive-include ViOTUcluster *
+global-exclude *.py[cod]

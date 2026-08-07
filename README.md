@@ -88,6 +88,8 @@ bash setup_ViOTUcluster_yaml.sh --cpu
 
 The `--cpu` option requires **mamba**. The installer selects CPU-specific main and iPhop YAML files and sets `CONDA_OVERRIDE_CUDA=""` internally, so users do not need to export that variable themselves. The verified specifications pin TensorFlow 2.11.1 for geNomad and TensorFlow 2.7.0 for iPhop to exact Linux/Python 3.8 CPU builds. iPhop 1.3.3 packages TensorFlow 2.7.0 files, so matching that version avoids mixing files from different TensorFlow releases. The normal command without `--cpu` continues to use the default YAML files.
 
+**Disk space:** software environments and biological databases are separate. On the Linux validation host, a clean CPU-only software prefix measured **9.19 GiB**, compared with **15.72 GiB** for the previously validated default prefix (about 6.54 GiB, or 42%, smaller). CPU-only mode avoids the duplicated CUDA, cuDNN, and NCCL runtime packages; database downloads still require their own storage as described below. Exact size varies with platform and resolved package builds.
+
 To install into a custom clean prefix:
 
 ```bash

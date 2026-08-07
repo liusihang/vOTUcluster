@@ -4,13 +4,17 @@
 check_command() {
     if [ "$1" = "viralverify" ] && ! command -v "$1" >/dev/null 2>&1; then
         local script_dir
+        local nested_candidate
         local sidecar_candidate
         script_dir="$(cd "$(dirname "$0")" && pwd)"
+        nested_candidate="${script_dir}/../envs/viralverify/bin/viralverify"
         sidecar_candidate="${script_dir}/../../viralverify/bin/viralverify"
-        if [ -x "$sidecar_candidate" ]; then
-            echo -e "[✅] viralverify is available via sidecar env: $sidecar_candidate"
-            return 0
-        fi
+        for candidate in "$nested_candidate" "$sidecar_candidate"; do
+            if [ -x "$candidate" ]; then
+                echo -e "[✅] viralverify is available via sidecar env: $candidate"
+                return 0
+            fi
+        done
     fi
 
     command -v "$1" >/dev/null 2>&1
@@ -131,4 +135,5 @@ else
     for missing_dep in "${missing_dependencies[@]}"; do
         echo -e "  - ❌ $missing_dep"
     done
+    exit 1
 fi

@@ -52,11 +52,61 @@ Before installing ViOTUcluster, ensure the following tools are available on your
 
 ViOTUcluster has been tested on Ubuntu and CentOS and should be compatible with all Linux distributions.
 
-### First-Time Installation of ViOTUcluster
+### Choose an Installation Method
 
-Follow these steps to install ViOTUcluster for the first time:
+| Method | Best for | Behavior |
+| ------ | -------- | -------- |
+| YAML-based source installation | Reproducible environments, development, auditing | Solves five versioned environment files and installs the checked-out ViOTUcluster source. |
+| Pre-packed installation | Fast first-time setup | Downloads and unpacks prepared environments from Zenodo or China SciDB. |
 
-ViOTUcluster comes with an **all-in-one setup script** that pulls three pre-packed Conda environments (ViOTUcluster / vRhyme / DRAM + iPhop) and unpacks them in one shot.
+The YAML method creates a main ViOTUcluster environment plus nested vRhyme, viralverify, DRAM, and iPhop environments. The pre-packed method preserves the existing prepared-environment layout. Database installation remains a separate step for both methods.
+
+### YAML-Based Installation (Reproducible)
+
+Clone the repository so the installer, YAML files, pipeline source, and bundled mini-test reads all come from the same revision:
+
+```bash
+git clone https://github.com/liusihang/ViOTUcluster.git
+cd ViOTUcluster
+
+# Optional: solve all five environments without creating them.
+bash setup_ViOTUcluster_yaml.sh --dry-run
+
+# Install to <conda-root>/envs/ViOTUcluster.
+bash setup_ViOTUcluster_yaml.sh
+```
+
+To install into a custom clean prefix:
+
+```bash
+bash setup_ViOTUcluster_yaml.sh --prefix /PATH/YOU/WANT/ViOTUcluster
+conda activate /PATH/YOU/WANT/ViOTUcluster
+```
+
+If a complete extracted CheckM data directory already exists, reuse it and avoid the CheckM post-link download:
+
+```bash
+bash setup_ViOTUcluster_yaml.sh \
+  --checkm-data-dir /path/to/checkm_data
+```
+
+The directory must contain `genome_tree/genome_tree.derep.txt`. Without this option, the `checkm-genome` Conda package downloads and verifies its standard reference data during environment creation.
+
+The YAML installer:
+
+- uses `conda-forge` and `bioconda` with strict channel priority without rewriting the user's global Conda configuration;
+- creates `envs/vRhyme`, `envs/viralverify`, `envs/DRAM`, and `envs/iPhop` under the main prefix;
+- pins the ViOTUcluster VirSorter fork to a specific Git commit;
+- installs the current repository checkout with `pip --no-deps` after Conda resolves runtime dependencies;
+- stages the bundled mini FASTQ files under `$CONDA_PREFIX/ViTest/Raw/CleanReads` for `ViOTUcluster_Test`;
+- can reuse an existing read-only CheckM data directory through `--checkm-data-dir`;
+- refuses to overwrite an existing target prefix.
+
+Run `bash setup_ViOTUcluster_yaml.sh --help` for the full option list.
+
+### Pre-Packed Installation (Fastest)
+
+ViOTUcluster also provides an **all-in-one setup script** that downloads and unpacks prepared environments.
 
 | Option                                            | What it does                                                                                               |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -98,15 +148,17 @@ ViOTUcluster comes with an **all-in-one setup script** that pulls three pre-pack
     ```bash
     conda activate /YOUR/CUSTOM/PATH/ViOTUcluster
     ```
-3. **Verify Installation of All Dependencies**
+
+### Verify Installation of All Dependencies
 
    To confirm that all required dependencies are correctly installed, run:
 
    ```bash
    conda activate ViOTUcluster
-   pip install --upgrade ViOTUcluster #Important，to keep all script up-to-date.
    ViOTUcluster_Check
    ```
+
+   The YAML installer already installs the checked-out source revision. For a pre-packed installation, run `pip install --upgrade ViOTUcluster` only when you intentionally want to switch the pipeline scripts to the currently published PyPI release.
 
    A successful check will produce output similar to this:
 
@@ -133,7 +185,7 @@ ViOTUcluster comes with an **all-in-one setup script** that pulls three pre-pack
 
    **Note:** `ViOTUcluster_Check` validates the runtime commands that the pipeline will call directly. In some deployments, `viralverify` may come from a sibling `viralverify` Conda environment rather than the active `ViOTUcluster` environment, so make sure the command is reachable from the shell where you launch the pipeline.
 
-4. **Set Up Databases**
+### Set Up Databases
 
    ```bash
    ViOTUcluster_download-database "/path/to/db" "num"
@@ -143,7 +195,7 @@ ViOTUcluster comes with an **all-in-one setup script** that pulls three pre-pack
 
    **Note:** The setup process involves downloading approximately **30 GB** of database files, so the installation time depends heavily on your **network speed**. A stable, high-speed internet connection is recommended to prevent installation failures.
 
-5. **Set Up DRAM and iPhop Environments（Optional for advanced analysis）**
+### Set Up DRAM and iPhop Databases (Optional for Advanced Analysis)
 
    #### Install DRAM Database
 

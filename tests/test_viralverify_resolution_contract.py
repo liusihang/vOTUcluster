@@ -60,6 +60,34 @@ class TestViralverifyResolutionContract(unittest.TestCase):
 
         self.assertEqual([os.path.realpath(sidecar_tool)], [os.path.realpath(command[0])])
 
+    def test_resolve_viralverify_command_uses_nested_yaml_environment(self):
+        with tempfile.TemporaryDirectory() as root:
+            nested_tool = os.path.join(
+                root,
+                "envs",
+                "ViOTUcluster",
+                "envs",
+                "viralverify",
+                "bin",
+                "viralverify",
+            )
+            os.makedirs(os.path.dirname(nested_tool), exist_ok=True)
+            with open(nested_tool, "w", encoding="utf-8") as handle:
+                handle.write("#!/usr/bin/env bash\n")
+            os.chmod(nested_tool, 0o755)
+
+            fake_python = os.path.join(root, "envs", "ViOTUcluster", "bin", "python")
+            os.makedirs(os.path.dirname(fake_python), exist_ok=True)
+            with open(fake_python, "w", encoding="utf-8") as handle:
+                handle.write("")
+
+            with mock.patch.dict(os.environ, {}, clear=False):
+                with mock.patch("ViOTUcluster.viralprediction.shutil.which", return_value=None):
+                    with mock.patch.object(sys, "executable", fake_python):
+                        command = viralprediction.resolve_viralverify_command()
+
+        self.assertEqual([os.path.realpath(nested_tool)], [os.path.realpath(command[0])])
+
     def test_build_viralverify_env_prepends_compat_dir(self):
         env = viralprediction.build_viralverify_env({"PYTHONPATH": "/tmp/existing"})
         compat_dir = os.path.join(

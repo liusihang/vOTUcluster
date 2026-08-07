@@ -61,7 +61,7 @@ ViOTUcluster has been tested on Ubuntu and CentOS and should be compatible with 
 
 The YAML method creates a main ViOTUcluster environment plus nested vRhyme, viralverify, DRAM, and iPhop environments. The pre-packed method preserves the existing prepared-environment layout. Database installation remains a separate step for both methods.
 
-### YAML-Based Installation (Reproducible)
+### YAML-Based Installation
 
 Clone the repository so the installer, YAML files, pipeline source, and bundled mini-test reads all come from the same revision:
 
@@ -87,8 +87,6 @@ bash setup_ViOTUcluster_yaml.sh --cpu
 ```
 
 The `--cpu` option requires **mamba**. The installer selects CPU-specific main and iPhop YAML files and sets `CONDA_OVERRIDE_CUDA=""` internally, so users do not need to export that variable themselves. The verified specifications pin TensorFlow 2.11.1 for geNomad and TensorFlow 2.7.0 for iPhop to exact Linux/Python 3.8 CPU builds. iPhop 1.3.3 packages TensorFlow 2.7.0 files, so matching that version avoids mixing files from different TensorFlow releases. The normal command without `--cpu` continues to use the default YAML files.
-
-**Disk space:** software environments and biological databases are separate. On the Linux validation host, a clean CPU-only software prefix measured **9.19 GiB**, compared with **15.72 GiB** for the previously validated default prefix (about 6.54 GiB, or 42%, smaller). CPU-only mode avoids the duplicated CUDA, cuDNN, and NCCL runtime packages; database downloads still require their own storage as described below. Exact size varies with platform and resolved package builds.
 
 To install into a custom clean prefix:
 

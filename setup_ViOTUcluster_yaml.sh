@@ -9,8 +9,11 @@ INSTALL_PREFIX=""
 ENV_NAME="$DEFAULT_ENV_NAME"
 NAME_WAS_SET=false
 DRY_RUN=false
+CPU_ONLY=false
 CHECKM_DATA_ROOT=""
 CONDA_RUNTIME_BIN=""
+MAIN_ENVIRONMENT_FILE=viotucluster.yml
+IPHOP_ENVIRONMENT_FILE=iphop.yml
 
 show_help() {
     cat <<'EOF'
@@ -22,6 +25,8 @@ Options:
   -n, --name NAME       Install under <conda-base>/envs/NAME.
   -p, --prefix PATH     Install the main environment at PATH.
       --dry-run         Solve all five YAML files without creating environments.
+      --cpu             Use verified CPU-only TensorFlow builds. Requires mamba
+                        and hides the CUDA virtual package during environment creation.
       --checkm-data-dir PATH
                         Reuse an extracted CheckM data directory instead of
                         downloading it during the CheckM post-link step.
@@ -62,6 +67,10 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=true
             shift
             ;;
+        --cpu)
+            CPU_ONLY=true
+            shift
+            ;;
         --checkm-data-dir)
             [[ $# -ge 2 ]] || die "missing value for $1"
             CHECKM_DATA_ROOT=$2
@@ -92,6 +101,13 @@ elif ! command -v "$ENV_MANAGER" >/dev/null 2>&1; then
     die "environment manager is not available: $ENV_MANAGER"
 fi
 
+if [[ "$CPU_ONLY" = true ]]; then
+    ENV_MANAGER_NAME=$(basename "$ENV_MANAGER")
+    [[ "$ENV_MANAGER_NAME" = mamba ]] || die "--cpu requires mamba; set VIOTUCLUSTER_ENV_MANAGER to a mamba executable"
+    MAIN_ENVIRONMENT_FILE=viotucluster-cpu.yml
+    IPHOP_ENVIRONMENT_FILE=iphop-cpu.yml
+fi
+
 if [[ -z "$INSTALL_PREFIX" ]]; then
     command -v conda >/dev/null 2>&1 || die "conda is required to resolve --name installations"
     CONDA_BASE=$(conda info --base 2>/dev/null) || die "could not determine the Conda base directory"
@@ -111,7 +127,7 @@ fi
 
 [[ ! -e "$INSTALL_PREFIX" ]] || die "installation prefix already exists: $INSTALL_PREFIX"
 
-for environment_file in viotucluster.yml vrhyme.yml viralverify.yml dram.yml iphop.yml; do
+for environment_file in "$MAIN_ENVIRONMENT_FILE" vrhyme.yml viralverify.yml dram.yml "$IPHOP_ENVIRONMENT_FILE"; do
     [[ -f "$ENVIRONMENT_DIR/$environment_file" ]] || die "missing environment file: $ENVIRONMENT_DIR/$environment_file"
 done
 
@@ -153,20 +169,21 @@ create_environment() {
     fi
 
     printf 'Creating %s environment at %s\n' "$label" "$target_prefix"
-    if [[ -n "$CHECKM_DATA_ROOT" ]]; then
-        CHECKM_DATA_DIR="$CHECKM_DATA_ROOT" \
-            CONDA_CHANNEL_PRIORITY=strict \
-            "$ENV_MANAGER" "${command_args[@]}"
-    else
-        CONDA_CHANNEL_PRIORITY=strict "$ENV_MANAGER" "${command_args[@]}"
+    local manager_environment=(CONDA_CHANNEL_PRIORITY=strict)
+    if [[ "$CPU_ONLY" = true ]]; then
+        manager_environment+=(CONDA_OVERRIDE_CUDA=)
     fi
+    if [[ -n "$CHECKM_DATA_ROOT" ]]; then
+        manager_environment+=(CHECKM_DATA_DIR="$CHECKM_DATA_ROOT")
+    fi
+    env "${manager_environment[@]}" "$ENV_MANAGER" "${command_args[@]}"
 }
 
-create_environment ViOTUcluster viotucluster.yml "$INSTALL_PREFIX"
+create_environment ViOTUcluster "$MAIN_ENVIRONMENT_FILE" "$INSTALL_PREFIX"
 create_environment vRhyme vrhyme.yml "$INSTALL_PREFIX/envs/vRhyme"
 create_environment viralverify viralverify.yml "$INSTALL_PREFIX/envs/viralverify"
 create_environment DRAM dram.yml "$INSTALL_PREFIX/envs/DRAM"
-create_environment iPhop iphop.yml "$INSTALL_PREFIX/envs/iPhop"
+create_environment iPhop "$IPHOP_ENVIRONMENT_FILE" "$INSTALL_PREFIX/envs/iPhop"
 
 if [[ "$DRY_RUN" = true ]]; then
     printf '%s\n' 'All environment specifications solved successfully.'

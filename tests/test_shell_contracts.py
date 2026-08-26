@@ -162,6 +162,19 @@ class TestShellContracts(unittest.TestCase):
         content = read_text("Modules", "ViOTUcluster_Check")
         self.assertRegex(content, r"for missing_dep[\s\S]+done\s+exit 1\s+fi")
 
+    def test_packaged_mini_reads_match_test_command_input(self):
+        content = read_text("Modules", "ViOTUcluster_Test")
+
+        self.assertIn('READS_DIR="$VI_TEST_BASE_DIR/Raw/CleanReads"', content)
+        self.assertIn('-r "$READS_DIR"', content)
+
+    def test_test_command_captures_pipeline_output_and_exit_code(self):
+        content = read_text("Modules", "ViOTUcluster_Test")
+
+        self.assertIn('| tee "$LOG_FILE"', content)
+        self.assertIn('COMMAND_EXIT_CODE=${PIPESTATUS[0]}', content)
+        self.assertIn('SUCCESS_MESSAGE="All basic analysis completed successfully"', content)
+
 
 if __name__ == "__main__":
     unittest.main()

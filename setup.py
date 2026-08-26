@@ -17,7 +17,7 @@ def read_long_description():
 
 setup(
     name="viotucluster",
-    version="0.7.0",
+    version="0.7.1",
     packages=find_packages(),
     include_package_data=True,
     exclude_package_data={
@@ -25,6 +25,9 @@ setup(
     },
     # Exclude the old Bash entry points to avoid conflict with new Python entry_points
     scripts=[f for f in glob.glob("Modules/*") if not f.endswith("ViOTUcluster") and not f.endswith("ViOTUcluster_AllinOne")],
+    data_files=[
+        ("ViTest/Raw/CleanReads", glob.glob("test/*.fastq.gz")),
+    ],
     entry_points={
         'console_scripts': [
             'ViOTUcluster=ViOTUcluster.viotucluster_cli:main',

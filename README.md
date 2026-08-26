@@ -37,16 +37,17 @@ _Recorded with [asciinema](https://docs.asciinema.org)_
 ______
 ## Important updates
 
+- Version 0.7.1: Made the Bioconda single-environment installation the recommended core-workflow setup and aligned vRhyme and CheckM runtime checks with that layout.
 - Version 0.5.7.2: Added the `--save-sambamba-intermediate` flag (also available in `ViOTUcluster_AllinOne`) so you can keep Sambamba view BAMs when troubleshooting heavy IO pressure.
 - Version 0.5.5: Added three concurrency controls options,`--max-prediction-tasks (-P)`, `--tpm-tasks (-T)`, `--assemble-jobs (-A)`, which could help to limit the over memory usage.
 
 ## Prerequisites
 
-Before installing ViOTUcluster, ensure the following tools are available on your system:
+Before installing ViOTUcluster, ensure an environment manager is available on your system:
 
 - [Miniconda](https://docs.conda.io/en/latest/miniconda.html) or [Anaconda](https://www.anaconda.com/products/distribution)
-- [mamba](https://github.com/mamba-org/mamba) (recommended for faster package management)
-- [Git](https://git-scm.com/downloads)
+- [mamba](https://github.com/mamba-org/mamba) (recommended)
+- [Git](https://git-scm.com/downloads) for source installations
 
 ## Installation
 
@@ -56,10 +57,34 @@ ViOTUcluster has been tested on Ubuntu and CentOS and should be compatible with 
 
 | Method | Best for | Behavior |
 | ------ | -------- | -------- |
-| YAML-based source installation | Reproducible environments, development, auditing | Solves five versioned environment files and installs the checked-out ViOTUcluster source. |
-| Pre-packed installation | Fast first-time setup | Downloads and unpacks prepared environments from Zenodo or China SciDB. |
+| Bioconda with mamba | Most users and the core pipeline | Installs ViOTUcluster and its core runtime tools into one environment. |
+| YAML-based source installation | DRAM and iPhop, development, auditing | Solves five versioned environment files and installs the checked-out ViOTUcluster source. |
+| Pre-packed installation | Existing prepared-environment deployments | Downloads and unpacks prepared environments from Zenodo or China SciDB. |
 
-The YAML method creates a main ViOTUcluster environment plus nested vRhyme, viralverify, DRAM, and iPhop environments. The pre-packed method preserves the existing prepared-environment layout. Database installation remains a separate step for both methods.
+The Bioconda package provides the single-environment core workflow: preprocessing, viral prediction, vRhyme binning, dereplication, abundance calculation, and summary generation. The YAML method adds nested vRhyme, viralverify, DRAM, and iPhop environments for the complete source-managed layout. Database installation remains a separate step for every method.
+
+### Bioconda Installation (Recommended)
+
+Create a fresh environment with strict channel ordering:
+
+```bash
+mamba create -n ViOTUcluster --strict-channel-priority -c conda-forge -c bioconda viotucluster
+conda activate ViOTUcluster
+ViOTUcluster_Check
+```
+
+The `checkm-genome` package may install its reference data during environment creation. To reuse a complete CheckM data directory that already contains `genome_tree/genome_tree.derep.txt`, pass it to the install process:
+
+```bash
+CHECKM_DATA_DIR=/path/to/checkm_data \
+  mamba create -n ViOTUcluster --strict-channel-priority -c conda-forge -c bioconda viotucluster
+```
+
+The Bioconda dependency uses the packaged `virsorter2-pyhmmeracc=2.2.4.2` implementation, matching the PyHMMER-based VirSorter behavior pinned by the YAML installation.
+
+On the Linux validation host, a clean GPU-enabled Bioconda installation downloaded about 3 GB of packages and produced an 8.3 GiB environment prefix. Exact sizes vary as dependency builds change; biological databases remain separate.
+
+Use the YAML-based installation below when you also need the separately managed DRAM and iPhop environments. Their database setup remains independent from the Bioconda core package.
 
 ### YAML-Based Installation
 
@@ -179,7 +204,6 @@ ViOTUcluster also provides an **all-in-one setup script** that downloads and unp
 
    ```bash
    Checking dependencies...
-   [✅] conda is installed.
    [✅] fastp is installed.
    [✅] megahit is installed.
    [✅] spades.py is installed.
@@ -187,18 +211,18 @@ ViOTUcluster also provides an **all-in-one setup script** that downloads and unp
    [✅] viralverify is installed.
    [✅] genomad is installed.
    [✅] checkv is installed.
+   [✅] vRhyme is installed.
    [✅] dRep is installed.
    [✅] checkm is installed.
    [✅] bwa is installed.
    [✅] sambamba is installed.
-   [✅] coverm is installed.
    [✅] parallel is installed.
    [✅] makeblastdb is installed.
    [✅] blastn is installed.
    All dependencies are installed.
    ```
 
-   **Note:** `ViOTUcluster_Check` validates the runtime commands that the pipeline will call directly. In some deployments, `viralverify` may come from a sibling `viralverify` Conda environment rather than the active `ViOTUcluster` environment, so make sure the command is reachable from the shell where you launch the pipeline.
+   **Note:** `ViOTUcluster_Check` validates the commands used by the core pipeline. It resolves `vRhyme` and `viralverify` from the active Bioconda environment, YAML-managed nested environments, or the sibling environments used by pre-packed installations.
 
 ### Set Up Databases
 
@@ -279,13 +303,13 @@ ViOTUcluster also provides an **all-in-one setup script** that downloads and unp
 
 ### Updating ViOTUcluster from an Older Version
 
-To update an existing ViOTUcluster installation to the latest version, use pip:
+To update a Bioconda installation, use the same channel order as the initial installation:
 
 ```bash
-pip install --upgrade ViOTUcluster
+mamba update -n ViOTUcluster --strict-channel-priority -c conda-forge -c bioconda viotucluster
 ```
 
-This command will upgrade the ViOTUcluster scripts while preserving your existing environment.
+For a YAML source installation, pull the intended tagged source revision and create a new clean prefix with `setup_ViOTUcluster_yaml.sh`.
 
 
 ## Additional Notes

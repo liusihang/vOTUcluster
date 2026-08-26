@@ -7,6 +7,31 @@ trap 'echo "[❌] An error occurred. Exiting..."; exit 1;' ERR
 : "${SAMBAMBA_SAVE_INTERMEDIATE:=false}"
 VIOTUCLUSTER_PYTHON=${VIOTUCLUSTER_PYTHON:-python}
 
+run_vrhyme() {
+  local nested_prefix
+  local sidecar_prefix
+  local managed_prefix
+
+  if command -v vRhyme >/dev/null 2>&1; then
+    vRhyme "$@"
+    return 0
+  fi
+
+  nested_prefix="${CONDA_PREFIX:-}/envs/vRhyme"
+  sidecar_prefix="${CONDA_PREFIX%/*}/vRhyme"
+  if [ -n "${CONDA_PREFIX:-}" ]; then
+    for managed_prefix in "$nested_prefix" "$sidecar_prefix"; do
+      if [ -x "$managed_prefix/bin/vRhyme" ]; then
+        PATH="$managed_prefix/bin:$PATH" "$managed_prefix/bin/vRhyme" "$@"
+        return 0
+      fi
+    done
+  fi
+
+  echo "[❌] Error: vRhyme was not found on PATH or in a managed ViOTUcluster environment." >&2
+  return 1
+}
+
 # Perform Binning analysis
 for FILE in $FILES; do
   echo "[🔄] Processing $FILE"
@@ -72,10 +97,10 @@ for FILE in $FILES; do
       rm -rf "$VRHYME_DIR"
     fi
 
-    conda run -p "$CONDA_PREFIX/envs/vRhyme" vRhyme -i "$OUT_DIR/${BASENAME}_filtered.fasta" \
-                                -b "$OUT_DIR/Binning/alignment.sorted.bam" \
-                                -t "${THREADS_PER_FILE}" \
-                                -o "$VRHYME_DIR"
+    run_vrhyme -i "$OUT_DIR/${BASENAME}_filtered.fasta" \
+               -b "$OUT_DIR/Binning/alignment.sorted.bam" \
+               -t "${THREADS_PER_FILE}" \
+               -o "$VRHYME_DIR"
 
     #conda deactivate
   fi

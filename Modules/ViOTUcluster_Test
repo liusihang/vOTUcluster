@@ -10,6 +10,7 @@ if [ -z "$CONDA_PREFIX" ]; then
 fi
 
 VI_TEST_BASE_DIR="$CONDA_PREFIX/ViTest"
+READS_DIR="$VI_TEST_BASE_DIR/Raw/CleanReads"
 OUTPUT_DIR="$VI_TEST_BASE_DIR/Res"
 LOG_FILE="$OUTPUT_DIR/pipeline.log"
 DATABASE="" 
@@ -66,11 +67,11 @@ fi
 echo "[🔄] Running ViOTUcluster_Test with database: $DATABASE"
 # Execute ViOTUcluster_AllinOne command and output directly to terminal
 # Stderr is redirected to stdout (2>&1) so it appears in terminal and is captured by potential parent processes
-ViOTUcluster_AllinOne -r "$VI_TEST_BASE_DIR" -o "$OUTPUT_DIR" -d "$DATABASE" -a megahit --con 2>&1
-COMMAND_EXIT_CODE=$?
+ViOTUcluster_AllinOne -r "$READS_DIR" -o "$OUTPUT_DIR" -d "$DATABASE" -a megahit --con 2>&1 | tee "$LOG_FILE"
+COMMAND_EXIT_CODE=${PIPESTATUS[0]}
 
 # --- Check for success ---
-SUCCESS_MESSAGE="All basic analysis completed successfully."
+SUCCESS_MESSAGE="All basic analysis completed successfully"
 
 # Check command exit code, log file existence, and success message in log
 if [ $COMMAND_EXIT_CODE -eq 0 ] && [ -f "$LOG_FILE" ] && grep -qF "$SUCCESS_MESSAGE" "$LOG_FILE"; then

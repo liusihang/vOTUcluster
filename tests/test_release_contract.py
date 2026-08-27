@@ -6,7 +6,7 @@ import unittest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RELEASE_VERSION = "0.7.0"
+RELEASE_VERSION = "0.7.1"
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "publish-to-pypi.yml"
 
 
@@ -49,6 +49,21 @@ class TestReleaseVersionContract(unittest.TestCase):
         self.assertIn("exclude_package_data", setup_source)
         self.assertIn('"__pycache__/*"', setup_source)
         self.assertIn('"*/__pycache__/*"', setup_source)
+
+    def test_package_install_stages_bundled_mini_reads(self):
+        setup_source = (REPO_ROOT / "setup.py").read_text(encoding="utf-8")
+
+        self.assertIn("ViTest/Raw/CleanReads", setup_source)
+        self.assertIn('glob.glob("test/*.fastq.gz")', setup_source)
+
+    def test_readme_documents_bioconda_as_the_primary_core_install(self):
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+        self.assertIn("Bioconda Installation (Recommended)", readme)
+        self.assertIn("mamba create -n ViOTUcluster", readme)
+        self.assertIn("-c conda-forge -c bioconda viotucluster", readme)
+        self.assertIn("single-environment core workflow", readme)
+        self.assertIn("DRAM and iPhop", readme)
 
 
 class TestTrustedPublisherWorkflowContract(unittest.TestCase):

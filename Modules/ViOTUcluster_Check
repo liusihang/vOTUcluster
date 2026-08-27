@@ -1,17 +1,34 @@
 #!/usr/bin/env bash
 
+VIOTUCLUSTER_PYTHON=${VIOTUCLUSTER_PYTHON:-python}
+
+distribution_version() {
+    "$VIOTUCLUSTER_PYTHON" -c 'from importlib.metadata import version; import sys; print(version(sys.argv[1]))' "$1"
+}
+
 # Function to check if a command is installed and retrieve its version
 check_command() {
-    if [ "$1" = "viralverify" ] && ! command -v "$1" >/dev/null 2>&1; then
+    if ! command -v "$1" >/dev/null 2>&1; then
         local script_dir
-        local nested_candidate
-        local sidecar_candidate
+        local candidates=()
         script_dir="$(cd "$(dirname "$0")" && pwd)"
-        nested_candidate="${script_dir}/../envs/viralverify/bin/viralverify"
-        sidecar_candidate="${script_dir}/../../viralverify/bin/viralverify"
-        for candidate in "$nested_candidate" "$sidecar_candidate"; do
+        case "$1" in
+            "viralverify")
+                candidates=(
+                    "${script_dir}/../envs/viralverify/bin/viralverify"
+                    "${script_dir}/../../viralverify/bin/viralverify"
+                )
+                ;;
+            "vRhyme")
+                candidates=(
+                    "${script_dir}/../envs/vRhyme/bin/vRhyme"
+                    "${script_dir}/../../vRhyme/bin/vRhyme"
+                )
+                ;;
+        esac
+        for candidate in "${candidates[@]}"; do
             if [ -x "$candidate" ]; then
-                echo -e "[✅] viralverify is available via sidecar env: $candidate"
+                echo -e "[✅] $1 is available via environment: $candidate"
                 return 0
             fi
         done
@@ -19,8 +36,19 @@ check_command() {
 
     command -v "$1" >/dev/null 2>&1
     if [ $? -eq 0 ]; then
+        if [ "$1" = "checkm" ] && ! checkm -h >/dev/null 2>&1; then
+            echo -e "[❌] checkm is installed but cannot start."
+            return 1
+        fi
+
         version=""
         case "$1" in
+            "genomad")
+                version="$(distribution_version "genomad")"
+                ;;
+            "checkm")
+                version="$(distribution_version "checkm-genome")"
+                ;;
             "checkv")
                 version="$(checkv 2>&1 | grep -oP 'CheckV v\d+\.\d+\.\d+' | sed 's/CheckV v//')"
                 ;;
@@ -52,6 +80,12 @@ check_command() {
 
 get_installed_version() {
     case "$1" in
+        "genomad")
+            distribution_version "genomad"
+            ;;
+        "checkm")
+            distribution_version "checkm-genome"
+            ;;
         "checkv")
             checkv 2>&1 | grep -oP 'CheckV v\d+\.\d+\.\d+' | sed 's/CheckV v//'
             ;;
@@ -75,7 +109,6 @@ echo "Checking dependencies..."
 
 # List of dependencies to check
 dependencies=(
-    "conda"
     "fastp"
     "megahit"
     "spades.py"
@@ -84,14 +117,13 @@ dependencies=(
     "genomad"
     #"pyhmmer"
     "checkv"
-    #"vrhyme"
+    "vRhyme"
     "dRep"
     #"DRAM"
     #"iPhop"
     "checkm"
     "bwa"
     "sambamba"
-    "coverm"
     "parallel"
     "makeblastdb"
     "blastn"
@@ -101,12 +133,10 @@ dependencies=(
 declare -A expected_versions
 expected_versions=(
     [genomad]="1.8.0"
-    [checkm-genome]="1.2.2"
+    [checkm]="1.2.2"
     [dRep]="3.5.0"
     [checkv]="1.0.3"
     [virsorter]="2.2.4.2"
-    [scikit-learn]="0.22.1"
-    [numpy]="1.23.5"
 )
 
 # Initialize a variable to track missing dependencies
